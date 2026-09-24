@@ -1,13 +1,24 @@
 import React, { useState, useEffect, useMemo } from "react";
 
 function App() {
-  const [tareas, setTareas] = useState([]);
+  const [tareas, setTareas] = useState(() => {
+    // Recuperar tareas guardadas en localStorage al iniciar
+    const saved = localStorage.getItem("tareas");
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [nuevaTarea, setNuevaTarea] = useState("");
   const [duracion, setDuracion] = useState("");
+  const [filtroDuracion, setFiltroDuracion] = useState("");
+  const [mostrarRecientes, setMostrarRecientes] = useState(false);
+
+  // Guardar tareas en localStorage cada vez que cambian
+  useEffect(() => {
+    localStorage.setItem("tareas", JSON.stringify(tareas));
+  }, [tareas]);
 
   // Calcular tiempo total con useMemo
   const calcularTiempoTotal = useMemo(() => {
-    console.log("Calculando tiempo total...");
     return tareas.reduce((total, tarea) => total + tarea.duracion, 0);
   }, [tareas]);
 
@@ -22,12 +33,30 @@ function App() {
       const nuevaTareaObj = {
         nombre: nuevaTarea,
         duracion: parseInt(duracion),
+        fecha: new Date().toISOString(), // guardar fecha de creación
       };
       setTareas([...tareas, nuevaTareaObj]);
       setNuevaTarea("");
       setDuracion("");
     }
   };
+
+  // Filtrar tareas según duración o recientes
+  const tareasFiltradas = useMemo(() => {
+    let filtradas = [...tareas];
+
+    if (filtroDuracion) {
+      filtradas = filtradas.filter(
+        (t) => t.duracion >= parseInt(filtroDuracion)
+      );
+    }
+
+    if (mostrarRecientes) {
+      filtradas = filtradas.slice(-3); // mostrar solo las últimas 3
+    }
+
+    return filtradas;
+  }, [tareas, filtroDuracion, mostrarRecientes]);
 
   return (
     <div style={{ fontFamily: "Arial", maxWidth: "500px", margin: "auto" }}>
@@ -48,9 +77,27 @@ function App() {
         <button onClick={agregarTarea}>Agregar tarea</button>
       </div>
 
+      <h2>Filtros</h2>
+      <div>
+        <input
+          type="number"
+          value={filtroDuracion}
+          onChange={(e) => setFiltroDuracion(e.target.value)}
+          placeholder="Duración mínima"
+        />
+        <label>
+          <input
+            type="checkbox"
+            checked={mostrarRecientes}
+            onChange={() => setMostrarRecientes(!mostrarRecientes)}
+          />
+          Mostrar solo recientes
+        </label>
+      </div>
+
       <h2>Tareas</h2>
       <ul>
-        {tareas.map((tarea, index) => (
+        {tareasFiltradas.map((tarea, index) => (
           <li key={index}>
             {tarea.nombre}: {tarea.duracion} minutos
           </li>
